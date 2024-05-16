@@ -1,10 +1,10 @@
 {
-  "name": "deep-tinkoff-invest-api",
+  "name": "tinkoff-invest-ts-provider",
   "version": "1.0.0",
-  "description": "Trading bot",
+  "description": "Tinkoff Invest typescript provider",
   "repository": {
     "type": "git",
-    "url": "https://github.com/suenot/deep-tinkoff-invest-api.git"
+    "url": "https://github.com/suenot/tinkoff-invest-ts-provider.git"
   },
   "keywords": [
     "trading",
