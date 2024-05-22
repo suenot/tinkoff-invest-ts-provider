@@ -9,7 +9,6 @@ import { OrderDirection, OrderType } from 'tinkoff-sdk-grpc-js/dist/generated/or
 import { BALANCE_INTERVAL, SLEEP_BETWEEN_ORDERS } from '../config';
 import { Wallet, Position } from '../types.d';
 import { sleep, writeFile, convertNumberToTinkoffNumber, convertTinkoffNumberToNumber } from '../utils';
-
 (global as any).INSTRUMENTS = [];
 (global as any).POSITIONS = [];
 (global as any).LAST_PRICES = [];
@@ -18,12 +17,15 @@ const debug = require('debug')('bot').extend('provider');
 
 const { orders, operations, marketData, users, instruments } = createSdk(process.env.TOKEN || '');
 
-let ACCOUNT_ID: string;
+const { ACCOUNT_ID } = process.env;
 
 export const provider = async () => {
-  ACCOUNT_ID = await getAccountId(process.env.ACCOUNT_ID);
+  debug("provider");
+  const accountIds = await getAccountIds();
+  debug({accountIds, ACCOUNT_ID});
+
   await getInstruments();
-  await getPositionsCycle();
+  await getPositionsCycle(ACCOUNT_ID);
 };
 
 export const generateOrders = async (wallet: Wallet) => {
@@ -55,36 +57,6 @@ export const generateOrder = async (position: Position) => {
 
   const direction = position.toBuyLots >= 1 ? OrderDirection.ORDER_DIRECTION_BUY : OrderDirection.ORDER_DIRECTION_SELL;
   debug('direction', direction);
-
-  // for (const i of _.range(position.toBuyLots)) {
-  //   // Идея создавать однолотовые ордера, для того, чтобы они всегда исполнялись полностью, а не частично.
-  //   // Могут быть сложности с:
-  //   // - кол-вом разрешенных запросов к api, тогда придется реализовывать очередь.
-  //   // - минимальный ордер может быть больше одного лота
-  //   debug(`Создаем однолотовый ордер #${i} of ${_.range(position.toBuyLots).length}`);
-  //   const order = {
-  //     accountId: ACCOUNT_ID,
-  //     figi: position.figi,
-  //     quantity: 1,
-  //     // price: { units: 40, nano: 0 },
-  //     direction,
-  //     orderType: OrderType.ORDER_TYPE_MARKET,
-  //     orderId: uniqid(),
-  //   };
-  //   debug('Отправляем ордер', order);
-
-  //   try {
-  //     const setOrder = await orders.postOrder(order);
-  //     debug('Успешно поставили ордер', setOrder);
-  //   } catch (err) {
-  //     debug('Ошибка при выставлении ордера');
-  //     debug(err);
-  //     console.trace(err);
-  //   }
-  //   await sleep(1000);
-  // }
-
-  // Или можно создавать обычные ордера
   debug('position', position);
 
   debug('Создаем рыночный ордер');
@@ -111,12 +83,7 @@ export const generateOrder = async (position: Position) => {
 
 };
 
-export const getAccountId = async (type) => {
-  if (type !== 'ISS' && type !== 'BROKER') {
-    debug('Передан ACCOUNT_ID', type);
-    return type;
-  }
-
+export const getAccountIds = async () => {
   debug('Получаем список аккаунтов');
   let accountsResult;
   try {
@@ -125,14 +92,10 @@ export const getAccountId = async (type) => {
     debug(err);
   }
   debug('accountsResult', accountsResult);
-
-  const account = (type === 'ISS') ? _.find(accountsResult, { type: 2 }) : _.find(accountsResult, { type: 1 });
-  debug('Найден ACCOUNT_ID', account);
-
-  return account;
+  return accountsResult;
 };
 
-export const getPositionsCycle = async () => {
+export const getPositionsCycle = async (accountId: string) => {
   return await new Promise(() => {
     let count = 1;
     const interval = setInterval(
@@ -143,7 +106,7 @@ export const getPositionsCycle = async () => {
         try {
           debug('Получение портфолио');
           portfolio = await operations.getPortfolio({
-            accountId: ACCOUNT_ID,
+            accountId,
           });
           debug('portfolio', portfolio);
 
@@ -159,7 +122,7 @@ export const getPositionsCycle = async () => {
         try {
           debug('Получение позиций');
           positions = await operations.getPositions({
-            accountId: ACCOUNT_ID,
+            accountId,
           });
           debug('positions', positions);
         } catch (err) {
