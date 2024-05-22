@@ -13,7 +13,7 @@
     "bot"
   ],
   "scripts": {
-    "start": "ts-node ./src/index.ts",
+    "start": "DEBUG=\"*\" ts-node ./src/index.ts",
     "dev": "DEBUG=\"*\" ts-node ./src/index.ts",
     "test": "DEBUG=\"*\" ts-mocha --timeout 10000 --project ./tsconfig.json /.src/test.ts"
   },
